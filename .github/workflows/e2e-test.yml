@@ -1,0 +1,147 @@
+name: End-to-End Testing
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  e2e-test:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_DB: party_puzzle_palooza_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: password
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      redis:
+        image: redis:7-alpine
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 6379:6379
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'pnpm'
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build applications
+        run: pnpm run build
+
+      - name: Setup test database
+        run: |
+          # Wait for PostgreSQL to be ready
+          until pg_isready -h localhost -p 5432 -U postgres; do
+            echo "Waiting for PostgreSQL..."
+            sleep 2
+          done
+          
+          # Run database setup
+          DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test" pnpm run db:setup
+
+      - name: Seed test data
+        run: |
+          DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test" \
+          REDIS_URL="redis://localhost:6379" \
+          pnpm run db:seed:demo
+
+      - name: Start API server
+        run: |
+          cd apps/api
+          DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test" \
+          REDIS_URL="redis://localhost:6379" \
+          JWT_SECRET="test-jwt-secret-for-e2e-testing" \
+          OPENAI_API_KEY="test-key" \
+          FRONTEND_URL="http://localhost:5173" \
+          API_URL="http://localhost:3001" \
+          WS_URL="ws://localhost:3001/game" \
+          pnpm run start:dev &
+          echo $! > api.pid
+          
+          # Wait for API to be ready
+          until curl -f http://localhost:3001/health; do
+            echo "Waiting for API server..."
+            sleep 2
+          done
+
+      - name: Start Web server
+        run: |
+          cd apps/web
+          VITE_API_URL="http://localhost:3001" \
+          VITE_WS_URL="ws://localhost:3001/game" \
+          pnpm run dev &
+          echo $! > web.pid
+          
+          # Wait for web server to be ready
+          until curl -f http://localhost:5173; do
+            echo "Waiting for web server..."
+            sleep 2
+          done
+
+      - name: Install Playwright
+        run: npx playwright install --with-deps
+
+      - name: Run E2E tests
+        run: |
+          # Set environment variables for tests
+          export DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test"
+          export REDIS_URL="redis://localhost:6379"
+          export API_URL="http://localhost:3001"
+          export WEB_URL="http://localhost:5173"
+          
+          # Run the E2E test script
+          node scripts/e2e-test.js
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: |
+            test-results/
+            playwright-report/
+            e2e-logs/
+
+      - name: Cleanup
+        if: always()
+        run: |
+          # Stop servers
+          if [ -f apps/api/api.pid ]; then
+            kill $(cat apps/api/api.pid) || true
+          fi
+          if [ -f apps/web/web.pid ]; then
+            kill $(cat apps/web/web.pid) || true
+          fi
+          
+          # Clean up any remaining processes
+          pkill -f "node.*start:dev" || true
+          pkill -f "vite" || true 

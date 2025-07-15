@@ -1,0 +1,164 @@
+version: '3.8'
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: party-puzzle-palooza-api
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=${DATABASE_URL}
+      - REDIS_URL=${REDIS_URL}
+      - JWT_SECRET=${JWT_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - API_URL=${API_URL}
+      - WS_URL=${WS_URL}
+      - TEMPO_ENDPOINT=${TEMPO_ENDPOINT}
+      - PROMETHEUS_PORT=${PROMETHEUS_PORT}
+      - SMTP_HOST=${SMTP_HOST}
+      - SMTP_PORT=${SMTP_PORT}
+      - SMTP_USER=${SMTP_USER}
+      - SMTP_PASS=${SMTP_PASS}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - PAGERDUTY_KEY=${PAGERDUTY_KEY}
+    ports:
+      - "3001:3001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    networks:
+      - party-puzzle-palooza-network
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: party-puzzle-palooza-web
+    environment:
+      - VITE_API_URL=${API_URL}
+      - VITE_WS_URL=${WS_URL}
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - api
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+    networks:
+      - party-puzzle-palooza-network
+
+  nginx:
+    image: nginx:alpine
+    container_name: party-puzzle-palooza-nginx
+    ports:
+      - "8080:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./nginx/ssl:/etc/nginx/ssl
+    depends_on:
+      - api
+      - web
+    restart: unless-stopped
+    networks:
+      - party-puzzle-palooza-network
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: party-puzzle-palooza-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./monitoring/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/etc/prometheus/console_libraries'
+      - '--web.console.templates=/etc/prometheus/consoles'
+      - '--storage.tsdb.retention.time=30d'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - party-puzzle-palooza-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: party-puzzle-palooza-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_SERVER_ROOT_URL=${GRAFANA_URL:-http://localhost:3000}
+    volumes:
+      - grafana_data:/var/lib/grafana
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - party-puzzle-palooza-network
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: party-puzzle-palooza-alertmanager
+    ports:
+      - "9093:9093"
+    volumes:
+      - ./monitoring/alertmanager.yml:/etc/alertmanager/alertmanager.yml
+      - alertmanager_data:/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
+    networks:
+      - party-puzzle-palooza-network
+
+  tempo:
+    image: grafana/tempo:latest
+    container_name: party-puzzle-palooza-tempo
+    ports:
+      - "3200:3200"
+      - "4317:4317"
+      - "4318:4318"
+    volumes:
+      - ./monitoring/tempo.yml:/etc/tempo/tempo.yml
+      - tempo_data:/tmp/tempo
+    command:
+      - '-config.file=/etc/tempo/tempo.yml'
+    restart: unless-stopped
+    networks:
+      - party-puzzle-palooza-network
+
+volumes:
+  prometheus_data:
+  grafana_data:
+  alertmanager_data:
+  tempo_data:
+
+networks:
+  party-puzzle-palooza-network:
+    driver: bridge 

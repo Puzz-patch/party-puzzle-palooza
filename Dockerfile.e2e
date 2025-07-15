@@ -1,0 +1,57 @@
+FROM node:18-alpine
+
+# Install system dependencies
+RUN apk add --no-cache \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont \
+    curl \
+    postgresql-client
+
+# Set environment variables for Playwright
+ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
+ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
+
+# Create app directory
+WORKDIR /app
+
+# Copy package files
+COPY package.json pnpm-lock.yaml ./
+COPY apps/api/package.json ./apps/api/
+COPY apps/web/package.json ./apps/web/
+COPY packages/database/package.json ./packages/database/
+COPY packages/shared/package.json ./packages/shared/
+
+# Install dependencies
+RUN npm install -g pnpm
+RUN pnpm install
+
+# Copy source code
+COPY . .
+
+# Build applications
+RUN pnpm run build
+
+# Install Playwright browsers
+RUN npx playwright install --with-deps chromium
+
+# Create test results directory
+RUN mkdir -p test-results
+
+# Copy test scripts
+COPY scripts/e2e-test.js ./scripts/
+COPY tests/e2e ./tests/e2e
+COPY playwright.config.js ./
+
+# Make test script executable
+RUN chmod +x scripts/e2e-test.js
+
+# Expose test results volume
+VOLUME ["/app/test-results"]
+
+# Default command
+CMD ["node", "scripts/e2e-test.js"] 

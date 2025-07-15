@@ -1,0 +1,15 @@
+apiVersion: 1
+
+datasources:
+  - name: InfluxDB
+    type: influxdb
+    access: proxy
+    url: http://influxdb:8086
+    jsonData:
+      version: Flux
+      organization: party-puzzle-palooza
+      defaultBucket: k6
+      tlsSkipVerify: true
+    secureJsonData:
+      token: my-super-secret-auth-token
+    isDefault: true 

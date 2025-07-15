@@ -1,0 +1,103 @@
+version: '3.8'
+
+services:
+  postgres-e2e:
+    image: postgres:15-alpine
+    container_name: party-puzzle-palooza-postgres-e2e
+    environment:
+      POSTGRES_DB: party_puzzle_palooza_e2e
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+      POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --lc-collate=C --lc-ctype=C"
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./supabase/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d party_puzzle_palooza_e2e"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis-e2e:
+    image: redis:7-alpine
+    container_name: party-puzzle-palooza-redis-e2e
+    ports:
+      - "6380:6379"
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  api-e2e:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: party-puzzle-palooza-api-e2e
+    environment:
+      - NODE_ENV=test
+      - DATABASE_URL=postgresql://postgres:password@postgres-e2e:5432/party_puzzle_palooza_e2e
+      - REDIS_URL=redis://redis-e2e:6379
+      - JWT_SECRET=e2e-test-jwt-secret
+      - OPENAI_API_KEY=test-key
+      - FRONTEND_URL=http://localhost:5173
+      - API_URL=http://localhost:3001
+      - WS_URL=ws://localhost:3001/game
+    ports:
+      - "3002:3001"
+    depends_on:
+      postgres-e2e:
+        condition: service_healthy
+      redis-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  web-e2e:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+    container_name: party-puzzle-palooza-web-e2e
+    environment:
+      - VITE_API_URL=http://localhost:3002
+      - VITE_WS_URL=ws://localhost:3002/game
+    ports:
+      - "5174:80"
+    depends_on:
+      api-e2e:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  e2e-test:
+    build:
+      context: .
+      dockerfile: Dockerfile.e2e
+    container_name: party-puzzle-palooza-e2e-test
+    environment:
+      - API_URL=http://api-e2e:3001
+      - WEB_URL=http://web-e2e:80
+      - DATABASE_URL=postgresql://postgres:password@postgres-e2e:5432/party_puzzle_palooza_e2e
+      - REDIS_URL=redis://redis-e2e:6379
+    depends_on:
+      api-e2e:
+        condition: service_healthy
+      web-e2e:
+        condition: service_healthy
+    volumes:
+      - ./test-results:/app/test-results
+    restart: "no" 

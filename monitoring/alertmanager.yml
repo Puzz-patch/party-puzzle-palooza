@@ -1,0 +1,56 @@
+global:
+  resolve_timeout: 5m
+  slack_api_url: 'https://hooks.slack.com/services/YOUR_SLACK_WEBHOOK'
+  pagerduty_url: 'https://events.pagerduty.com/v2/enqueue'
+
+route:
+  group_by: ['alertname', 'cluster', 'service']
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 1h
+  receiver: 'slack-notifications'
+  routes:
+    - match:
+        severity: critical
+      receiver: 'pagerduty-critical'
+      continue: true
+    - match:
+        severity: warning
+      receiver: 'slack-notifications'
+    - match:
+        severity: info
+      receiver: 'slack-notifications'
+
+receivers:
+  - name: 'slack-notifications'
+    slack_configs:
+      - channel: '#alerts'
+        title: '{{ template "slack.title" . }}'
+        text: '{{ template "slack.text" . }}'
+        send_resolved: true
+        actions:
+          - type: button
+            text: 'View in Grafana'
+            url: '{{ template "slack.grafana" . }}'
+          - type: button
+            text: 'View in Prometheus'
+            url: '{{ template "slack.prometheus" . }}'
+
+  - name: 'pagerduty-critical'
+    pagerduty_configs:
+      - routing_key: 'YOUR_PAGERDUTY_KEY'
+        description: '{{ template "pagerduty.description" . }}'
+        severity: '{{ if eq .GroupLabels.severity "critical" }}critical{{ else }}warning{{ end }}'
+        client: 'Party Puzzle Palooza Alertmanager'
+        client_url: '{{ template "pagerduty.clientURL" . }}'
+        send_resolved: true
+
+templates:
+  - '/etc/alertmanager/template/*.tmpl'
+
+inhibit_rules:
+  - source_match:
+      severity: 'critical'
+    target_match:
+      severity: 'warning'
+    equal: ['alertname', 'dev', 'instance'] 

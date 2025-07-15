@@ -1,0 +1,277 @@
+name: Deploy to Staging
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      service:
+        description: 'Service to deploy (web, api, or both)'
+        required: true
+        default: 'both'
+        type: choice
+        options:
+        - web
+        - api
+        - both
+
+env:
+  AWS_REGION: us-west-2
+  ECR_REGISTRY: ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
+  ECS_CLUSTER: staging-cluster
+  WEB_SERVICE: staging-web-service
+  API_SERVICE: staging-api-service
+
+jobs:
+  # Build and push Docker images
+  build-and-push:
+    runs-on: ubuntu-latest
+    outputs:
+      web-image-tag: ${{ steps.web-build.outputs.image-tag }}
+      api-image-tag: ${{ steps.api-build.outputs.image-tag }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build and push Web image
+      - name: Build and push Web image
+        id: web-build
+        if: github.event.inputs.service == 'web' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/web
+          file: ./apps/web/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-web:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-web:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+      # Build and push API image
+      - name: Build and push API image
+        id: api-build
+        if: github.event.inputs.service == 'api' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./apps/api
+          file: ./apps/api/Dockerfile
+          push: true
+          tags: |
+            ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-api:${{ github.sha }}
+            ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-api:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64
+
+  # Scan images for vulnerabilities
+  scan-images:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Scan Web image
+      - name: Scan Web image
+        if: github.event.inputs.service == 'web' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          docker pull ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-web:${{ github.sha }}
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-web:${{ github.sha }}
+
+      # Scan API image
+      - name: Scan API image
+        if: github.event.inputs.service == 'api' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          docker pull ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-api:${{ github.sha }}
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock \
+            aquasec/trivy image --exit-code 1 --severity HIGH,CRITICAL \
+            ${{ env.ECR_REGISTRY }}/party-puzzle-palooza-api:${{ github.sha }}
+
+  # Deploy to staging
+  deploy:
+    runs-on: ubuntu-latest
+    needs: [build-and-push, scan-images]
+    environment: staging
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        uses: aws-actions/amazon-ecr-login@v2
+
+      # Deploy Web service
+      - name: Deploy Web service
+        if: github.event.inputs.service == 'web' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WEB_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      # Deploy API service
+      - name: Deploy API service
+        if: github.event.inputs.service == 'api' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.API_SERVICE }} \
+            --force-new-deployment \
+            --region ${{ env.AWS_REGION }}
+
+      # Wait for deployment to complete
+      - name: Wait for Web deployment
+        if: github.event.inputs.service == 'web' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.WEB_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Wait for API deployment
+        if: github.event.inputs.service == 'api' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          aws ecs wait services-stable \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --services ${{ env.API_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+
+  # Health check and rollback
+  health-check:
+    runs-on: ubuntu-latest
+    needs: deploy
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Get ALB DNS name
+      - name: Get ALB DNS name
+        id: alb
+        run: |
+          ALB_DNS=$(aws elbv2 describe-load-balancers \
+            --names staging-alb \
+            --query 'LoadBalancers[0].DNSName' \
+            --output text \
+            --region ${{ env.AWS_REGION }})
+          echo "alb-dns=$ALB_DNS" >> $GITHUB_OUTPUT
+
+      # Health check Web service
+      - name: Health check Web service
+        if: github.event.inputs.service == 'web' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          for i in {1..10}; do
+            echo "Health check attempt $i for Web service..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ steps.alb.outputs.alb-dns }}/)
+            if [ "$response" = "200" ]; then
+              echo "Web service health check passed"
+              break
+            fi
+            if [ $i -eq 10 ]; then
+              echo "Web service health check failed after 10 attempts"
+              exit 1
+            fi
+            sleep 30
+          done
+
+      # Health check API service
+      - name: Health check API service
+        if: github.event.inputs.service == 'api' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          for i in {1..10}; do
+            echo "Health check attempt $i for API service..."
+            response=$(curl -s -o /dev/null -w "%{http_code}" https://${{ steps.alb.outputs.alb-dns }}/health)
+            if [ "$response" = "200" ]; then
+              echo "API service health check passed"
+              break
+            fi
+            if [ $i -eq 10 ]; then
+              echo "API service health check failed after 10 attempts"
+              exit 1
+            fi
+            sleep 30
+          done
+
+  # Rollback on failure
+  rollback:
+    runs-on: ubuntu-latest
+    needs: [deploy, health-check]
+    if: failure()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Rollback Web service
+        if: github.event.inputs.service == 'web' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          echo "Rolling back Web service..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.WEB_SERVICE }} \
+            --task-definition ${{ env.WEB_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Rollback API service
+        if: github.event.inputs.service == 'api' || github.event.inputs.service == 'both' || github.event_name == 'push'
+        run: |
+          echo "Rolling back API service..."
+          aws ecs update-service \
+            --cluster ${{ env.ECS_CLUSTER }} \
+            --service ${{ env.API_SERVICE }} \
+            --task-definition ${{ env.API_SERVICE }} \
+            --region ${{ env.AWS_REGION }}
+
+      - name: Notify rollback
+        run: |
+          echo "🚨 Deployment failed and services have been rolled back"
+          echo "Please check the logs and fix the issues before redeploying" 

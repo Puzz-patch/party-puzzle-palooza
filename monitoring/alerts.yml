@@ -1,0 +1,172 @@
+groups:
+  - name: party-puzzle-palooza
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+
+      # High response time
+      - alert: HighResponseTime
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High response time detected"
+          description: "95th percentile response time is {{ $value }} seconds"
+
+      # Database connection issues
+      - alert: DatabaseConnectionIssues
+        expr: up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection lost"
+          description: "PostgreSQL database is not responding"
+
+      # Redis connection issues
+      - alert: RedisConnectionIssues
+        expr: up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis connection lost"
+          description: "Redis cache is not responding"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: (node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes) / node_memory_MemTotal_bytes > 0.9
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }}"
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: 100 - (avg by(instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value }}%"
+
+      # Disk space running low
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Disk space running low"
+          description: "Disk usage is {{ $value | humanizePercentage }}"
+
+      # API server down
+      - alert: APIServerDown
+        expr: up{job="party-puzzle-palooza-api"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "API server is down"
+          description: "The API server has been down for more than 1 minute"
+
+      # WebSocket connection issues
+      - alert: WebSocketIssues
+        expr: rate(websocket_connections_total[5m]) < 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Low WebSocket activity"
+          description: "WebSocket connection rate is {{ $value }} connections per second"
+
+      # Game creation rate
+      - alert: LowGameCreationRate
+        expr: rate(games_created_total[10m]) < 0.01
+        for: 10m
+        labels:
+          severity: info
+        annotations:
+          summary: "Low game creation rate"
+          description: "Game creation rate is {{ $value }} games per second"
+
+      # Question flagging rate
+      - alert: HighQuestionFlaggingRate
+        expr: rate(questions_flagged_total[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High question flagging rate"
+          description: "Question flagging rate is {{ $value }} flags per second"
+
+      # Token transaction issues
+      - alert: TokenTransactionIssues
+        expr: rate(token_transactions_failed_total[5m]) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High token transaction failure rate"
+          description: "Token transaction failure rate is {{ $value }} failures per second"
+
+      # Rate limiting triggered
+      - alert: RateLimitingTriggered
+        expr: rate(rate_limit_hits_total[5m]) > 1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Rate limiting is being triggered"
+          description: "Rate limiting hits are {{ $value }} per second"
+
+      # OpenAI API issues
+      - alert: OpenAIAPIIssues
+        expr: rate(openai_api_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "OpenAI API errors detected"
+          description: "OpenAI API error rate is {{ $value }} errors per second"
+
+      # JWT token issues
+      - alert: JWTTokenIssues
+        expr: rate(jwt_token_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+        annotations:
+          summary: "JWT token validation errors"
+          description: "JWT token error rate is {{ $value }} errors per second"
+
+      # Database query performance
+      - alert: SlowDatabaseQueries
+        expr: histogram_quantile(0.95, rate(database_query_duration_seconds_bucket[5m])) > 1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow database queries detected"
+          description: "95th percentile database query time is {{ $value }} seconds"
+
+      # Redis operation performance
+      - alert: SlowRedisOperations
+        expr: histogram_quantile(0.95, rate(redis_operation_duration_seconds_bucket[5m])) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow Redis operations detected"
+          description: "95th percentile Redis operation time is {{ $value }} seconds" 

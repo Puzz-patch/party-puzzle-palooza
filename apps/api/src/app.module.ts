@@ -6,26 +6,35 @@ import { APP_INTERCEPTOR, APP_GUARD } from '@nestjs/core';
 
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { GameGateway } from './game/game.gateway';
-import { GamesController } from './games/games.controller';
-import { GamesService } from './games/games.service';
-import { RoundsController } from './rounds/rounds.controller';
-import { RoundsService } from './rounds/rounds.service';
-import { ShotsController } from './shots/shots.controller';
-import { ShotsService } from './shots/shots.service';
-import { PlayerActionsController } from './player-actions/player-actions.controller';
-import { PlayerActionsService } from './player-actions/player-actions.service';
-import { ArchivedPromptsController } from './archived-prompts/archived-prompts.controller';
-import { ArchivedPromptsService } from './archived-prompts/archived-prompts.service';
-import { FinaleController } from './finale/finale.controller';
-import { FinaleService } from './finale/finale.service';
-import { QuestionsController } from './questions/questions.controller';
-import { QuestionsService } from './questions/questions.service';
+import { GameGateway } from './gateway/game.gateway';
+import { GamesController } from './controllers/games.controller';
+import { GamesService } from './services/games.service';
+import { RoundsController } from './controllers/rounds.controller';
+import { RoundsService } from './services/rounds.service';
+import { ShotController } from './controllers/shot.controller';
+import { ShotService } from './services/shot.service';
+import { PlayerActionController } from './controllers/player-action.controller';
+import { PlayerActionService } from './services/player-action.service';
+import { ArchivedPromptsController } from './controllers/archived-prompts.controller';
+import { ArchivedPromptsService } from './services/archived-prompts.service';
+import { FinaleController } from './controllers/finale.controller';
+import { FinaleService } from './services/finale.service';
+import { QuestionFlagController } from './controllers/question-flag.controller';
+import { QuestionFlagService } from './services/question-flag.service';
 import { RedisService } from './redis/redis.service';
-import { OpenAIService } from './openai/openai.service';
-import { RateLimitingService } from './rate-limiting/rate-limiting.service';
-import { GameStateService } from './game-state/game-state.service';
+import { ModerationService } from './services/moderation.service';
+import { RateLimitService } from './services/rate-limit.service';
+import { GameStateService } from './services/game-state.service';
 import { TelemetryService } from './telemetry/telemetry';
+
+// New smaller services
+import { GameQueryService } from './services/game-query.service';
+import { QuestionDrawingService } from './services/question-drawing.service';
+import { CustomQuestionService } from './services/custom-question.service';
+import { GameResetService } from './services/game-reset.service';
+import { ActionValidationService } from './services/action-validation.service';
+import { ActionProcessingService } from './services/action-processing.service';
+import { StateTransitionService } from './services/state-transition.service';
 
 // Security imports
 import { SecurityMiddleware } from './security/security.middleware';
@@ -59,26 +68,39 @@ import { Game, GamePlayer, GameRound, PlayerAnswer, Question, User, UserBalance,
     AppController,
     GamesController,
     RoundsController,
-    ShotsController,
-    PlayerActionsController,
+    ShotController,
+    PlayerActionController,
     ArchivedPromptsController,
     FinaleController,
-    QuestionsController,
+    QuestionFlagController,
   ],
   providers: [
     AppService,
     GameGateway,
+    
+    // Main services (now orchestrators)
     GamesService,
     RoundsService,
-    ShotsService,
-    PlayerActionsService,
+    ShotService,
+    PlayerActionService,
     ArchivedPromptsService,
     FinaleService,
-    QuestionsService,
-    RedisService,
-    OpenAIService,
-    RateLimitingService,
+    QuestionFlagService,
     GameStateService,
+    
+    // New smaller services
+    GameQueryService,
+    QuestionDrawingService,
+    CustomQuestionService,
+    GameResetService,
+    ActionValidationService,
+    ActionProcessingService,
+    StateTransitionService,
+    
+    // Utility services
+    RedisService,
+    ModerationService,
+    RateLimitService,
     TelemetryService,
     GameIsolationService,
     JwtPlayerGuard,

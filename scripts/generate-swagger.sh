@@ -21,7 +21,7 @@ print_success() {
 if ! curl -s http://localhost:3001/health > /dev/null; then
     print_status "Starting API server..."
     cd apps/api
-    pnpm run start:dev &
+    npm run start:dev &
     API_PID=$!
     
     # Wait for server to start

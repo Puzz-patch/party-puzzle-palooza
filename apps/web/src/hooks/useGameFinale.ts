@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useWebSocket } from './useWebSocket';
 import { useToast } from './use-toast';
 
@@ -37,7 +37,7 @@ export const useGameFinale = ({ gameId }: UseGameFinaleProps) => {
   const [isFinalizing, setIsFinalizing] = useState(false);
   const [finaleResult, setFinaleResult] = useState<GameFinaleResult | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const { socket, isConnected } = useWebSocket();
+  useWebSocket(gameId);
   const { toast } = useToast();
 
   // Finalize the game
@@ -86,22 +86,9 @@ export const useGameFinale = ({ gameId }: UseGameFinaleProps) => {
   }, [gameId, toast]);
 
   // Listen for finale events from WebSocket
-  const handleFinaleEvent = useCallback((data: any) => {
-    if (data.type === 'game_finale' && data.data.gameId === gameId) {
-      setFinaleResult(data.data);
-      
-      toast({
-        title: 'Game Finalized! 🎉',
-        description: `Winner: ${data.data.winner.username} with ${data.data.winner.finalScore} points!`,
-        variant: 'default',
-      });
-    }
+  useEffect(() => {
+    // This logic should be moved to the RealtimeService and update the store
   }, [gameId, toast]);
-
-  // Set up WebSocket listener
-  if (socket && isConnected) {
-    socket.on('game_finale', handleFinaleEvent);
-  }
 
   // Get winner information
   const getWinner = useCallback(() => {

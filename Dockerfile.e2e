@@ -20,21 +20,20 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium-browser
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 COPY apps/api/package.json ./apps/api/
 COPY apps/web/package.json ./apps/web/
 COPY packages/database/package.json ./packages/database/
 COPY packages/shared/package.json ./packages/shared/
 
 # Install dependencies
-RUN npm install -g pnpm
-RUN pnpm install
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build applications
-RUN pnpm run build
+RUN npm run build
 
 # Install Playwright browsers
 RUN npx playwright install --with-deps chromium

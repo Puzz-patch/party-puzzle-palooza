@@ -16,68 +16,19 @@ interface ResponderData {
 interface UseResponderStateProps {
   roundId: string;
   onPhaseChange?: (phase: string) => void;
+  gameId: string;
 }
 
-export const useResponderState = ({ roundId, onPhaseChange }: UseResponderStateProps) => {
+export const useResponderState = ({ roundId, onPhaseChange, gameId }: UseResponderStateProps) => {
   const [responderData, setResponderData] = useState<ResponderData | null>(null);
   const [isResponderSelected, setIsResponderSelected] = useState(false);
-  const { socket, isConnected } = useWebSocket();
+  useWebSocket(gameId);
   const { toast } = useToast();
 
   // Listen for responder selection broadcasts
   useEffect(() => {
-    if (!socket || !isConnected) return;
-
-    const handleResponderSelected = (data: any) => {
-      if (data.type === 'responder_selected' && data.data.roundId === roundId) {
-        const responderInfo = data.data;
-        setResponderData(responderInfo);
-        setIsResponderSelected(true);
-
-        // Show toast notification
-        toast({
-          title: 'Responder Selected! 🎯',
-          description: `${responderInfo.responderName} has been selected to respond.`,
-          variant: 'default',
-        });
-
-        // Notify parent component of phase change
-        onPhaseChange?.(responderInfo.phase);
-      }
-    };
-
-    const handlePhaseChange = (data: any) => {
-      if (data.type === 'phase_change' && data.data.roundId === roundId) {
-        const newPhase = data.data.phase;
-        setResponderData(prev => prev ? { ...prev, phase: newPhase } : null);
-
-        // Show phase transition toast
-        if (newPhase === 'reveal_gamble') {
-          toast({
-            title: 'Reveal & Gamble Phase! ⚡',
-            description: 'Time to reveal answers and place bets!',
-            variant: 'default',
-          });
-        } else if (newPhase === 'finished') {
-          toast({
-            title: 'Round Complete! ✅',
-            description: 'The round has finished.',
-            variant: 'default',
-          });
-        }
-
-        onPhaseChange?.(newPhase);
-      }
-    };
-
-    socket.on('responder_selected', handleResponderSelected);
-    socket.on('phase_change', handlePhaseChange);
-
-    return () => {
-      socket.off('responder_selected', handleResponderSelected);
-      socket.off('phase_change', handlePhaseChange);
-    };
-  }, [socket, isConnected, roundId, onPhaseChange, toast]);
+    // This logic should be moved to the RealtimeService and update the store
+  }, [roundId, onPhaseChange, toast]);
 
   // Calculate time remaining
   const getTimeRemaining = useCallback(() => {

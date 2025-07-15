@@ -2,6 +2,14 @@
 """
 Load Test Analysis Script for Party Puzzle Palooza
 Analyzes k6 results and system metrics to generate performance reports.
+
+Requirements:
+  - pandas
+  - matplotlib
+  - seaborn
+
+Install dependencies using:
+  pip install -r requirements.txt
 """
 
 import json

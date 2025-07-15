@@ -1,13 +1,16 @@
 {
   "files": [],
   "references": [
-    { "path": "./tsconfig.app.json" },
-    { "path": "./tsconfig.node.json" }
+    { "path": "./apps/api" },
+    { "path": "./apps/web" },
+    { "path": "./packages/database" },
+    { "path": "./packages/shared" }
   ],
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@party-puzzle-palooza/database": ["./packages/database/src"],
+      "@party-puzzle-palooza/shared": ["./packages/shared/src"]
     },
     "noImplicitAny": false,
     "noUnusedParameters": false,

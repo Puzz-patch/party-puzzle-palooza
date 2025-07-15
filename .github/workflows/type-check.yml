@@ -1,0 +1,79 @@
+name: Type Check
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  type-check:
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        package: ['web', 'api', 'shared', 'database']
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Type check ${{ matrix.package }}
+      run: |
+        if [ "${{ matrix.package }}" = "web" ]; then
+          cd apps/web && npm run build
+        elif [ "${{ matrix.package }}" = "api" ]; then
+          cd apps/api && npm run build
+        elif [ "${{ matrix.package }}" = "shared" ]; then
+          cd packages/shared && npm run build
+        elif [ "${{ matrix.package }}" = "database" ]; then
+          cd packages/database && npm run build
+        fi
+    
+    - name: Run TypeScript compiler
+      run: |
+        if [ "${{ matrix.package }}" = "web" ]; then
+          cd apps/web && npx tsc --noEmit --strict
+        elif [ "${{ matrix.package }}" = "api" ]; then
+          cd apps/api && npx tsc --noEmit --strict
+        elif [ "${{ matrix.package }}" = "shared" ]; then
+          cd packages/shared && npx tsc --noEmit --strict
+        elif [ "${{ matrix.package }}" = "database" ]; then
+          cd packages/database && npx tsc --noEmit --strict
+        fi
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run ESLint
+      run: npm run lint
+    
+    - name: Check for any types
+      run: |
+        echo "Checking for 'any' types in TypeScript files..."
+        if grep -r "any" apps/ packages/ --include="*.ts" --include="*.tsx" | grep -v "node_modules" | grep -v "test" | grep -v "spec"; then
+          echo "❌ Found 'any' types in TypeScript files. Please replace with proper types."
+          exit 1
+        else
+          echo "✅ No 'any' types found in TypeScript files."
+        fi 

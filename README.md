@@ -6,7 +6,7 @@ A real-time multiplayer party game where players create and answer custom questi
 
 ### Prerequisites
 
-- **Node.js** 18+ and pnpm
+- **Node.js** 18+ and npm
 - **Docker** and Docker Compose
 - **Git**
 
@@ -18,19 +18,19 @@ git clone <repository-url>
 cd party-puzzle-palooza
 
 # Install dependencies
-pnpm install
+npm install
 
 # Start infrastructure services
-pnpm run dev:start
+npm run dev:start
 
 # Setup database
-pnpm run db:setup
+npm run db:setup
 
 # Seed with demo data
-pnpm run db:seed:demo
+npm run db:seed:demo
 
 # Start development servers
-pnpm run dev
+npm run dev
 ```
 
 ### Access Services
@@ -119,10 +119,10 @@ pnpm run dev
 ### Load Testing
 ```bash
 # Run load tests
-pnpm run load:test
+npm run load:test
 
 # Analyze results
-pnpm run load:analyze
+npm run load:analyze
 ```
 
 ### End-to-End Testing
@@ -131,13 +131,13 @@ pnpm run load:analyze
 ./scripts/run-e2e-docker.sh
 
 # Run E2E tests locally
-pnpm run e2e:test
+npm run e2e:test
 
 # Run Playwright tests
-pnpm run e2e:playwright
+npm run e2e:playwright
 
 # View test report
-pnpm run e2e:report
+npm run e2e:report
 ```
 
 ## 🔧 Development
@@ -146,31 +146,31 @@ pnpm run e2e:report
 
 ```bash
 # Development
-pnpm run dev                    # Start all apps in development mode
-pnpm run dev:start             # Start infrastructure services
-pnpm run dev:stop              # Stop infrastructure services
+npm run dev                    # Start all apps in development mode
+npm run dev:start             # Start infrastructure services
+npm run dev:stop              # Stop infrastructure services
 
 # Database
-pnpm run db:setup              # Setup database with migrations
-pnpm run db:migrate            # Run database migrations
-pnpm run db:seed:demo          # Seed with demo data
+npm run db:setup              # Setup database with migrations
+npm run db:migrate            # Run database migrations
+npm run db:seed:demo          # Seed with demo data
 
 # Testing
-pnpm run test                  # Run all tests
-pnpm run test:watch            # Run tests in watch mode
+npm run test                  # Run all tests
+npm run test:watch            # Run tests in watch mode
 
 # Monitoring
-pnpm run monitoring:setup      # Setup monitoring stack
-pnpm run monitoring:start      # Start monitoring services
-pnpm run monitoring:stop       # Stop monitoring services
+npm run monitoring:setup      # Setup monitoring stack
+npm run monitoring:start      # Start monitoring services
+npm run monitoring:stop       # Stop monitoring services
 
 # Production
-pnpm run prod:start            # Start production stack
-pnpm run prod:stop             # Stop production stack
+npm run prod:start            # Start production stack
+npm run prod:stop             # Stop production stack
 
 # Load Testing
-pnpm run load:test             # Run load tests
-pnpm run load:analyze          # Analyze load test results
+npm run load:test             # Run load tests
+npm run load:analyze          # Analyze load test results
 ```
 
 ### Project Structure
@@ -196,10 +196,10 @@ party-puzzle-palooza/
 
 ```bash
 # Setup monitoring
-pnpm run monitoring:setup
+npm run monitoring:setup
 
 # Start production stack
-pnpm run prod:start
+npm run prod:start
 
 # Access services
 open https://localhost

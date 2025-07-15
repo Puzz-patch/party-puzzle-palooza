@@ -140,7 +140,7 @@ OPENAI_API_KEY=your-openai-api-key
 ### Setup
 1. Install dependencies:
    ```bash
-   pnpm install
+   npm install
    ```
 
 2. Set up environment variables:
@@ -151,24 +151,24 @@ OPENAI_API_KEY=your-openai-api-key
 
 3. Run database migrations:
    ```bash
-   pnpm run migration:run
+   npm run migration:run
    ```
 
 4. Start development server:
    ```bash
-   pnpm run dev
+   npm run dev
    ```
 
 ### Testing
 ```bash
 # Run all tests
-pnpm test
+npm test
 
 # Run tests with coverage
-pnpm test:cov
+npm run test:cov
 
 # Run specific test file
-pnpm test games.controller.test.ts
+npm test games.controller.test.ts
 ```
 
 ## Architecture

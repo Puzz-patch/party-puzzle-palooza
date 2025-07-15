@@ -15,9 +15,9 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🌱 Party Puzzle Palooza Database Seeder${NC}"
 echo "=============================================="
 
-# Check if pnpm is installed
-if ! command -v pnpm &> /dev/null; then
-    echo -e "${RED}❌ pnpm is not installed. Please install it first.${NC}"
+# Check if npm is installed
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}❌ npm is not installed. Please install it first.${NC}"
     exit 1
 fi
 
@@ -35,21 +35,21 @@ fi
 
 # Install dependencies if needed
 echo -e "${YELLOW}📦 Checking dependencies...${NC}"
-pnpm install
+npm install
 
 # Build database package
 echo -e "${YELLOW}🔨 Building database package...${NC}"
 cd packages/database
-pnpm build
+npm run build
 cd ../..
 
 # Run migrations first
 echo -e "${YELLOW}🔄 Running migrations...${NC}"
-pnpm db:migrate
+npm run db:migrate
 
 # Seed the database
 echo -e "${YELLOW}🌱 Seeding database with demo data...${NC}"
-pnpm db:seed
+npm run db:seed
 
 echo -e "${GREEN}✅ Database seeding completed!${NC}"
 echo ""
@@ -66,4 +66,4 @@ echo -e "${BLUE}👤 Demo User Credentials:${NC}"
 echo "Username: alice_gamer"
 echo "Password: password123"
 echo ""
-echo -e "${YELLOW}💡 To customize seeding, use: pnpm db:seed:cli --help${NC}" 
+echo -e "${YELLOW}💡 To customize seeding, use: npm run db:seed:cli --help${NC}" 

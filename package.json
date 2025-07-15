@@ -2,7 +2,7 @@
   "name": "party-puzzle-palooza",
   "version": "0.0.0",
   "private": true,
-  "description": "A monorepo for Party Puzzle Palooza with Turbo and pnpm workspaces",
+  "description": "A monorepo for Party Puzzle Palooza with Turbo and npm workspaces",
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
@@ -12,12 +12,12 @@
     "format": "prettier --write \"**/*.{ts,tsx,md}\"",
     "format:check": "prettier --check \"**/*.{ts,tsx,md}\"",
     "prepare": "husky install",
-    "db:migrate": "cd packages/database && pnpm migration:run",
-    "db:generate": "cd packages/database && pnpm migration:generate",
-    "db:revert": "cd packages/database && pnpm migration:revert",
+    "db:migrate": "cd packages/database && npm run migration:run",
+    "db:generate": "cd packages/database && npm run migration:generate",
+    "db:revert": "cd packages/database && npm run migration:revert",
     "db:setup": "./scripts/setup-database.sh",
-    "db:seed": "cd packages/database && pnpm seed",
-    "db:seed:cli": "cd packages/database && pnpm seed:cli",
+    "db:seed": "cd packages/database && npm run seed",
+    "db:seed:cli": "cd packages/database && npm run seed:cli",
     "db:seed:demo": "./scripts/seed-demo.sh",
     "monitoring:setup": "./scripts/setup-monitoring.sh",
     "monitoring:start": "docker-compose -f docker-compose.prod.yml --profile monitoring up -d",
@@ -28,15 +28,23 @@
     "prod:stop": "docker-compose -f docker-compose.prod.yml down",
     "load:test": "./scripts/run-load-test.sh",
     "load:analyze": "python3 scripts/analyze-load-test.py",
+    "db:indexes": "./scripts/run-performance-migration.sh",
+    "db:benchmark": "./scripts/run-performance-benchmark.sh",
     "e2e:test": "node scripts/e2e-test.js",
     "e2e:playwright": "playwright test",
     "e2e:install": "playwright install",
     "e2e:report": "playwright show-report",
     "e2e:docker": "./scripts/run-e2e-docker.sh",
-    "e2e:test": "node scripts/e2e-test.js",
-    "e2e:playwright": "playwright test",
-    "e2e:install": "playwright install",
-    "e2e:report": "playwright show-report"
+    "type-check": "./scripts/type-check.sh",
+    "type-check:web": "cd apps/web && npx tsc --noEmit --strict",
+    "type-check:api": "cd apps/api && npx tsc --noEmit --strict",
+    "type-check:shared": "cd packages/shared && npx tsc --noEmit --strict",
+    "type-check:database": "cd packages/database && npx tsc --noEmit --strict",
+    "cache:test": "./scripts/run-cache-performance-test.sh",
+    "cache:stats": "curl -s http://localhost:3000/cache/stats | jq",
+    "cache:status": "curl -s http://localhost:3000/cache/status | jq",
+    "cache:clear": "curl -X DELETE http://localhost:3000/cache/clear",
+    "cache:monitor": "watch -n 5 'curl -s http://localhost:3000/cache/status | jq'"
   },
   "devDependencies": {
     "@commitlint/cli": "^18.4.3",
@@ -52,10 +60,9 @@
     "turbo": "^1.11.3",
     "typescript": "^5.3.2"
   },
-  "packageManager": "pnpm@8.15.0",
   "engines": {
     "node": ">=18.0.0",
-    "pnpm": ">=8.0.0"
+    "npm": ">=8.0.0"
   },
   "workspaces": [
     "apps/*",

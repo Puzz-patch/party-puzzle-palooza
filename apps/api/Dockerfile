@@ -4,21 +4,18 @@ FROM node:18-alpine AS builder
 WORKDIR /app
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Install dependencies
-RUN pnpm install --frozen-lockfile
+RUN npm ci
 
 # Copy source code
 COPY . .
 
 # Build the API
-RUN pnpm --filter @party-puzzle-palooza/api build
+RUN npm run build --workspace=apps/api
 
 # Production stage
 FROM node:18-alpine
@@ -29,15 +26,12 @@ WORKDIR /app
 RUN apk add --no-cache curl
 
 # Copy package files
-COPY package.json pnpm-lock.yaml ./
+COPY package.json package-lock.json* ./
 COPY apps/api/package.json ./apps/api/
 COPY packages/shared/package.json ./packages/shared/
 
-# Install pnpm
-RUN npm install -g pnpm
-
 # Install production dependencies only
-RUN pnpm install --frozen-lockfile --prod
+RUN npm ci --only=production
 
 # Copy built application
 COPY --from=builder /app/apps/api/dist ./apps/api/dist

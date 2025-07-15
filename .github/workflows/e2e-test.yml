@@ -44,18 +44,13 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-          cache: 'pnpm'
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 8
+          cache: 'npm'
 
       - name: Install dependencies
-        run: pnpm install
+        run: npm ci
 
       - name: Build applications
-        run: pnpm run build
+        run: npm run build
 
       - name: Setup test database
         run: |
@@ -66,13 +61,13 @@ jobs:
           done
           
           # Run database setup
-          DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test" pnpm run db:setup
+          DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test" npm run db:setup
 
       - name: Seed test data
         run: |
           DATABASE_URL="postgresql://postgres:password@localhost:5432/party_puzzle_palooza_test" \
           REDIS_URL="redis://localhost:6379" \
-          pnpm run db:seed:demo
+          npm run db:seed:demo
 
       - name: Start API server
         run: |
@@ -84,7 +79,7 @@ jobs:
           FRONTEND_URL="http://localhost:5173" \
           API_URL="http://localhost:3001" \
           WS_URL="ws://localhost:3001/game" \
-          pnpm run start:dev &
+          npm run start:dev &
           echo $! > api.pid
           
           # Wait for API to be ready
@@ -98,7 +93,7 @@ jobs:
           cd apps/web
           VITE_API_URL="http://localhost:3001" \
           VITE_WS_URL="ws://localhost:3001/game" \
-          pnpm run dev &
+          npm run dev &
           echo $! > web.pid
           
           # Wait for web server to be ready

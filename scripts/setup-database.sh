@@ -15,9 +15,9 @@ NC='\033[0m' # No Color
 echo -e "${BLUE}🗄️  Party Puzzle Palooza Database Setup${NC}"
 echo "=============================================="
 
-# Check if pnpm is installed
-if ! command -v pnpm &> /dev/null; then
-    echo -e "${RED}❌ pnpm is not installed. Please install it first.${NC}"
+# Check if npm is installed
+if ! command -v npm &> /dev/null; then
+    echo -e "${RED}❌ npm is not installed. Please install it first.${NC}"
     exit 1
 fi
 
@@ -36,18 +36,18 @@ fi
 
 # Install dependencies
 echo -e "${YELLOW}📦 Installing dependencies...${NC}"
-pnpm install
+npm install
 
 # Build database package
 echo -e "${YELLOW}🔨 Building database package...${NC}"
 cd packages/database
-pnpm build
+npm run build
 cd ../..
 
 # Run migrations
 echo -e "${YELLOW}🔄 Running database migrations...${NC}"
 cd packages/database
-pnpm migration:run
+npm run migration:run
 cd ../..
 
 echo -e "${GREEN}✅ Database setup completed successfully!${NC}"
@@ -55,7 +55,7 @@ echo ""
 echo -e "${BLUE}📋 Next Steps:${NC}"
 echo "1. Verify database connection by running the API server:"
 echo "   cd apps/api"
-echo "   pnpm dev"
+echo "   npm run dev"
 echo ""
 echo "2. Test the health endpoint:"
 echo "   curl http://localhost:3001/health"

@@ -35,7 +35,7 @@ module "vpc" {
   azs         = var.availability_zones
 }
 
-# RDS Database (Development)
+# RDS Database (Dev)
 module "rds" {
   source = "../../modules/rds"
   
